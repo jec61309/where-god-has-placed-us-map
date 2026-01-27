@@ -3,9 +3,17 @@
 <head>
   <title>Where God Has Placed Us</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; }
-    #map { height: 100%; width: 100%; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -13,15 +21,25 @@
 <div id="map"></div>
 
 <script>
+/* =========================
+   CONFIG
+========================= */
 const SHEET_ID = "1JnsbsIui3DZrxczAANMYyp3qun05kR-98ZmHZIC-ECE";
 const API_KEY  = "AIzaSyC86YnNhyUyQtgOJX7PC0uQ5SUQGdUv7qs";
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+const SHEET_NAME = "Pins";
+
+/* Read-only data feed from Google Sheets */
+const SHEET_URL =
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
 let map;
 let geocoder;
 let markers = [];
-let geocodeCache = new Map(); // address -> {lat,lng}
+let geocodeCache = new Map(); // address → {lat,lng}
 
+/* =========================
+   MAP INIT
+========================= */
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center: { lat: 42.06, lng: -82.63 },
@@ -30,22 +48,21 @@ function initMap() {
 
   geocoder = new google.maps.Geocoder();
 
-  // ✅ Permanent Church/School marker
+  /* Permanent Church / School Marker */
   new google.maps.Marker({
     map,
     position: { lat: 42.0511, lng: -82.58783 },
     title: "Good News Church – Sunday Gathering",
-    icon: {
-      url: "https://maps.google.com/mapfiles/kml/shapes/church.png",
-      scaledSize: new google.maps.Size(36, 36)
-    },
+    icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
     zIndex: 9999
   });
 
   loadData();
 }
 
-// Remove old markers so refresh doesn't duplicate pins
+/* =========================
+   HELPERS
+========================= */
 function clearMarkers() {
   markers.forEach(m => m.setMap(null));
   markers = [];
@@ -57,18 +74,21 @@ function pinColor(category) {
   return "blue"; // Live (default)
 }
 
-function addMarker(lat, lng, category, title) {
+function addMarker(lat, lng, category) {
   const marker = new google.maps.Marker({
     map,
     position: { lat, lng },
-    title: title || "",
+    title: category,
     icon: `https://maps.google.com/mapfiles/ms/icons/${pinColor(category)}-dot.png`
   });
   markers.push(marker);
 }
 
+/* =========================
+   LOAD DATA FROM SHEET
+========================= */
 function loadData() {
-  // Cache-bust to avoid stale gviz responses
+  // cache-bust to avoid stale data
   const url = SHEET_URL + "&_=" + Date.now();
 
   fetch(url)
@@ -82,60 +102,54 @@ function loadData() {
       rows.forEach(row => {
         const cells = row.c;
 
-        // Your columns:
-        // 0 Timestamp
-        // 1 Name
-        // 2 Which best describes this location?
-        // 3 Address or place name
-        // 4 Latitude
-        // 5 Longitude
-        // 6 Approved (Yes/No)   (ignored)
+        /*
+          Pins sheet columns:
+          0 Timestamp
+          1 Name (blank)
+          2 Category (Live / Work/School / Play)
+          3 Address
+          4 Latitude
+          5 Longitude
+        */
 
-        const name     = cells[1]?.v || "";
         const category = cells[2]?.v || "";
         const address  = cells[3]?.v || "";
         const latRaw   = cells[4]?.v;
         const lngRaw   = cells[5]?.v;
 
-        // Require a category so accidental blanks don't show
         if (!category) return;
 
-        const title = name ? `${name} (${category})` : category;
-
-        // If we already have coordinates, use them
+        // If coordinates exist, use them
         if (typeof latRaw === "number" && typeof lngRaw === "number") {
-          addMarker(latRaw, lngRaw, category, title);
+          addMarker(latRaw, lngRaw, category);
           return;
         }
 
-        // Otherwise, geocode the address
-        const addr = (address || "").trim();
+        // Otherwise geocode the address
+        const addr = address.trim();
         if (!addr) return;
 
-        // Cache to avoid re-geocoding the same address every refresh
         if (geocodeCache.has(addr)) {
           const cached = geocodeCache.get(addr);
-          addMarker(cached.lat, cached.lng, category, title);
+          addMarker(cached.lat, cached.lng, category);
           return;
         }
 
         geocoder.geocode({ address: addr }, (results, status) => {
-          if (status === "OK" && results && results[0]) {
+          if (status === "OK" && results[0]) {
             const loc = results[0].geometry.location;
             const lat = loc.lat();
             const lng = loc.lng();
             geocodeCache.set(addr, { lat, lng });
-            addMarker(lat, lng, category, title);
-          } else {
-            console.warn("Geocode failed:", addr, status);
+            addMarker(lat, lng, category);
           }
         });
       });
     })
-    .catch(err => console.error("Sheet fetch error:", err));
+    .catch(err => console.error("Sheet error:", err));
 }
 
-// Refresh every 2 minutes
+/* Refresh automatically */
 setInterval(loadData, 120000);
 </script>
 
