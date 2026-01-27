@@ -44,15 +44,19 @@ function initMap() {
 
   // Permanent Church / School marker
   new google.maps.Marker({
-    map,
-    position: { lat: 42.0511, lng: -82.58783 },
-    title: "Good News Church – Sunday Gathering",
-    icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
-    zIndex: 9999
-  });
-
-  loadData();
-}
+  map,
+  position: { lat: 42.0511, lng: -82.58783 },
+  title: "Good News Church – Sunday Gathering",
+  icon: {
+    path: google.maps.SymbolPath.STAR,
+    fillColor: "#6A1B9A",
+    fillOpacity: 1,
+    strokeColor: "#FFFFFF",
+    strokeWeight: 2,
+    scale: 12
+  },
+  zIndex: 9999
+});
 
 // Clear only the markers that come from the sheet (not the church marker)
 function clearDataMarkers() {
