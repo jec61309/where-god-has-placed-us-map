@@ -51,9 +51,7 @@ function loadData() {
         const category = cells[2]?.v;
         const lat = cells[4]?.v;
         const lng = cells[5]?.v;
-        const approved = cells[6]?.v;
-
-        if (approved !== "Yes" || !lat || !lng) return;
+if (!category) return;
 
         let color = "blue";
         if (category === "Work/School") color = "green";
