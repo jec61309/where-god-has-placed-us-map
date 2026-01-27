@@ -47,24 +47,32 @@ function initMap() {
 
   geocoder = new google.maps.Geocoder();
 
-  /* ⭐ PERMANENT CHURCH / SCHOOL MARKER ⭐ */
-  new google.maps.Marker({
-    map: map,
-    position: { lat: 42.0511, lng: -82.58783 },
-    title: "Good News Church – Sunday Gathering",
-    icon: {
-      path: google.maps.SymbolPath.STAR,
-      fillColor: "#FFD700",   // gold
-      fillOpacity: 1,
-      strokeColor: "#5D4037", // dark outline
-      strokeWeight: 2,
-      scale: 14
-    },
-    zIndex: google.maps.Marker.MAX_ZINDEX + 1
-  });
+// ⭐ PERMANENT CHURCH / SCHOOL MARKER (custom SVG so it won't fall back)
+const starSvg = encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+    <polygon
+      points="32,4 39,24 60,24 43,36 49,56 32,44 15,56 21,36 4,24 25,24"
+      fill="#FFD700"
+      stroke="#5D4037"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+  </svg>
+`);
 
-  loadData();
-}
+const churchIcon = {
+  url: `data:image/svg+xml;charset=UTF-8,${starSvg}`,
+  scaledSize: new google.maps.Size(44, 44),
+  anchor: new google.maps.Point(22, 22)
+};
+
+new google.maps.Marker({
+  map: map,
+  position: { lat: 42.0511, lng: -82.58783 },
+  title: "Good News Church – Sunday Gathering",
+  icon: churchIcon,
+  zIndex: google.maps.Marker.MAX_ZINDEX + 1
+});
 
 /* =========================
    HELPERS
