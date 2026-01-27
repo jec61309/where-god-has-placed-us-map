@@ -27,13 +27,12 @@ const SHEET_ID   = "1JnsbsIui3DZrxczAANMYyp3qun05kR-98ZmHZIC-ECE";
 const API_KEY    = "AIzaSyC86YnNhyUyQtgOJX7PC0uQ5SUQGdUv7qs";
 const SHEET_NAME = "Form Responses 1";
 
-/* Google Visualization feed */
 const SHEET_URL =
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
 
 let map;
 let geocoder;
-let dataMarkers = [];
+let markers = [];
 let geocodeCache = new Map();
 
 /* =========================
@@ -47,55 +46,51 @@ function initMap() {
 
   geocoder = new google.maps.Geocoder();
 
-// ⭐ PERMANENT CHURCH / SCHOOL MARKER (custom SVG so it won't fall back)
-const starSvg = encodeURIComponent(`
-  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-    <polygon
-      points="32,4 39,24 60,24 43,36 49,56 32,44 15,56 21,36 4,24 25,24"
-      fill="#FFD700"
-      stroke="#5D4037"
-      stroke-width="3"
-      stroke-linejoin="round"
-    />
-  </svg>
-`);
+  /* ⭐ CHURCH / SCHOOL STAR MARKER (SVG, bulletproof) */
+  const starSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
+    '<polygon points="32,4 39,24 60,24 43,36 49,56 32,44 15,56 21,36 4,24 25,24" ' +
+    'fill="#FFD700" stroke="#5D4037" stroke-width="3"/></svg>';
 
-const churchIcon = {
-  url: `data:image/svg+xml;charset=UTF-8,${starSvg}`,
-  scaledSize: new google.maps.Size(44, 44),
-  anchor: new google.maps.Point(22, 22)
-};
+  const churchIcon = {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(starSvg),
+    scaledSize: new google.maps.Size(44, 44),
+    anchor: new google.maps.Point(22, 22)
+  };
 
-new google.maps.Marker({
-  map: map,
-  position: { lat: 42.0511, lng: -82.58783 },
-  title: "Good News Church – Sunday Gathering",
-  icon: churchIcon,
-  zIndex: google.maps.Marker.MAX_ZINDEX + 1
-});
+  new google.maps.Marker({
+    map: map,
+    position: { lat: 42.0511, lng: -82.58783 },
+    title: "Good News Church – Sunday Gathering",
+    icon: churchIcon,
+    zIndex: 10000
+  });
+
+  loadData();
+}
 
 /* =========================
    HELPERS
 ========================= */
-function clearDataMarkers() {
-  dataMarkers.forEach(m => m.setMap(null));
-  dataMarkers = [];
+function clearMarkers() {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
 }
 
 function pinColor(category) {
   if (category === "Work/School") return "green";
   if (category === "Play") return "orange";
-  return "blue"; // Live
+  return "blue";
 }
 
-function addDataMarker(lat, lng, category) {
+function addMarker(lat, lng, category) {
   const marker = new google.maps.Marker({
     map,
     position: { lat, lng },
     title: category,
     icon: `https://maps.google.com/mapfiles/ms/icons/${pinColor(category)}-dot.png`
   });
-  dataMarkers.push(marker);
+  markers.push(marker);
 }
 
 function geocodeAndAdd(address, category) {
@@ -104,17 +99,17 @@ function geocodeAndAdd(address, category) {
 
   if (geocodeCache.has(addr)) {
     const cached = geocodeCache.get(addr);
-    addDataMarker(cached.lat, cached.lng, category);
+    addMarker(cached.lat, cached.lng, category);
     return;
   }
 
   geocoder.geocode({ address: addr }, (results, status) => {
-    if (status === "OK" && results && results[0]) {
+    if (status === "OK" && results[0]) {
       const loc = results[0].geometry.location;
       const lat = loc.lat();
       const lng = loc.lng();
       geocodeCache.set(addr, { lat, lng });
-      addDataMarker(lat, lng, category);
+      addMarker(lat, lng, category);
     } else {
       console.warn("Geocode failed:", addr, status);
     }
@@ -122,10 +117,10 @@ function geocodeAndAdd(address, category) {
 }
 
 /* =========================
-   LOAD DATA FROM SHEET
+   LOAD DATA
 ========================= */
 function loadData() {
-  const url = SHEET_URL + "&_=" + Date.now(); // cache-bust
+  const url = SHEET_URL + "&_=" + Date.now();
 
   fetch(url)
     .then(res => res.text())
@@ -134,15 +129,15 @@ function loadData() {
       try {
         json = JSON.parse(text.substring(47).slice(0, -2));
       } catch (e) {
-        console.error("Sheet parse error:", e);
+        console.error("Sheet parse error", e);
         return;
       }
 
       const rows = json.table?.rows || [];
-      clearDataMarkers();
+      clearMarkers();
 
-      rows.forEach(r => {
-        const c = r.c || [];
+      rows.forEach(row => {
+        const c = row.c || [];
         const live = c[1]?.v || "";
         const work = c[2]?.v || "";
         const play = c[3]?.v || "";
@@ -152,10 +147,10 @@ function loadData() {
         if (play) geocodeAndAdd(play, "Play");
       });
     })
-    .catch(err => console.error("Sheet fetch error:", err));
+    .catch(err => console.error("Fetch error:", err));
 }
 
-/* Refresh every 2 minutes */
+/* Auto refresh every 2 minutes */
 setInterval(loadData, 120000);
 </script>
 
