@@ -27,7 +27,21 @@ function initMap() {
     center: { lat: 42.06, lng: -82.63 },
     zoom: 12
   });
+
   geocoder = new google.maps.Geocoder();
+
+  // ✅ Permanent Church/School marker
+  new google.maps.Marker({
+    map,
+    position: { lat: 42.0511, lng: -82.58783 },
+    title: "Good News Church – Sunday Gathering",
+    icon: {
+      url: "https://maps.google.com/mapfiles/kml/shapes/church.png",
+      scaledSize: new google.maps.Size(36, 36)
+    },
+    zIndex: 9999
+  });
+
   loadData();
 }
 
@@ -54,7 +68,10 @@ function addMarker(lat, lng, category, title) {
 }
 
 function loadData() {
-  fetch(SHEET_URL)
+  // Cache-bust to avoid stale gviz responses
+  const url = SHEET_URL + "&_=" + Date.now();
+
+  fetch(url)
     .then(res => res.text())
     .then(text => {
       const json = JSON.parse(text.substring(47).slice(0, -2));
@@ -72,7 +89,7 @@ function loadData() {
         // 3 Address or place name
         // 4 Latitude
         // 5 Longitude
-        // 6 Approved (ignored now)
+        // 6 Approved (Yes/No)   (ignored)
 
         const name     = cells[1]?.v || "";
         const category = cells[2]?.v || "";
@@ -80,7 +97,7 @@ function loadData() {
         const latRaw   = cells[4]?.v;
         const lngRaw   = cells[5]?.v;
 
-        // No category = don't show (prevents accidental blanks from appearing)
+        // Require a category so accidental blanks don't show
         if (!category) return;
 
         const title = name ? `${name} (${category})` : category;
@@ -110,8 +127,6 @@ function loadData() {
             geocodeCache.set(addr, { lat, lng });
             addMarker(lat, lng, category, title);
           } else {
-            // If an address can't be found, it simply won't place a pin.
-            // (Often fixed by making the address more specific.)
             console.warn("Geocode failed:", addr, status);
           }
         });
