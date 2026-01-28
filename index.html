@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <title>Where God Has Placed Us</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
     html, body {
@@ -14,7 +14,7 @@
     }
 
     #map {
-      height: 100%;
+      height: 100vh;
       width: 100%;
     }
 
@@ -22,12 +22,11 @@
       position: absolute;
       bottom: 20px;
       left: 20px;
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255,255,255,0.95);
       padding: 10px 12px;
       border-radius: 8px;
       font-size: 14px;
-      line-height: 1.4;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
       z-index: 99999;
     }
 
@@ -46,99 +45,91 @@
       height: 18px;
       margin-right: 8px;
     }
-
-    #map-legend .star {
-      font-size: 16px;
-    }
   </style>
 </head>
 
 <body>
-  <div id="map"></div>
 
-  <div id="map-legend">
-    <div><img src="https://maps.google.com/mapfiles/ms/icons/blue-dot.png"> Live</div>
-    <div><img src="https://maps.google.com/mapfiles/ms/icons/green-dot.png"> Work / School</div>
-    <div><img src="https://maps.google.com/mapfiles/ms/icons/orange-dot.png"> Play</div>
-    <div class="star">⭐ GNC Sunday Gathering</div>
-  </div>
+<div id="map"></div>
 
-  <script>
-    const SHEET_ID = "1JnsbsIui3DZrxczAANMYyp3qun05kR-98ZmHZIC-ECE";
-    const SHEET_NAME = "Form Responses 1";
+<div id="map-legend">
+  <div><img src="https://maps.google.com/mapfiles/ms/icons/blue-dot.png"> Live</div>
+  <div><img src="https://maps.google.com/mapfiles/ms/icons/green-dot.png"> Work / School</div>
+  <div><img src="https://maps.google.com/mapfiles/ms/icons/orange-dot.png"> Play</div>
+  <div>⭐ GNC Sunday Gathering</div>
+</div>
 
-    const CHURCH_LOCATION = {
-      lat: 42.0511,
-      lng: -82.58783
-    };
+<script>
+  const SHEET_ID = "1JnsbsIui3DZrxczAANMYyp3qun05kR-98ZmHZIC-ECE";
+  const SHEET_NAME = "Form Responses 1";
 
-    let map;
+  const CHURCH_LOCATION = { lat: 42.0511, lng: -82.58783 };
 
-    function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: CHURCH_LOCATION,
-        zoom: 12,
-        mapTypeControl: false
-      });
+  let map;
 
-      // ⭐ GNC Sunday Gathering marker
-      new google.maps.Marker({
-        position: CHURCH_LOCATION,
-        map,
-        title: "GNC Sunday Gathering",
-        icon: {
-          path: google.maps.SymbolPath.STAR,
-          scale: 10,
-          fillColor: "#FFD700",
-          fillOpacity: 1,
-          strokeColor: "#333",
-          strokeWeight: 1
-        }
-      });
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: CHURCH_LOCATION,
+      zoom: 12,
+      mapTypeControl: false
+    });
 
-      loadSheetData();
-    }
+    // ⭐ Church marker
+    new google.maps.Marker({
+      position: CHURCH_LOCATION,
+      map,
+      title: "GNC Sunday Gathering",
+      icon: {
+        path: google.maps.SymbolPath.STAR,
+        scale: 10,
+        fillColor: "#FFD700",
+        fillOpacity: 1,
+        strokeColor: "#333",
+        strokeWeight: 1
+      }
+    });
 
-    function loadSheetData() {
-      const url =
-        `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`;
+    loadSheetData();
 
-      fetch(url)
-        .then(res => res.text())
-        .then(text => {
-          const json = JSON.parse(text.substr(47).slice(0, -2));
-          const rows = json.table.rows;
+    setTimeout(() => {
+      google.maps.event.trigger(map, "resize");
+    }, 400);
+  }
 
-          rows.forEach(row => {
-            const type = row.c[2]?.v;
-            const lat = row.c[4]?.v;
-            const lng = row.c[5]?.v;
+  function loadSheetData() {
+    const url =
+      `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`;
 
-            if (!type || !lat || !lng) return;
+    fetch(url)
+      .then(res => res.text())
+      .then(text => {
+        const json = JSON.parse(text.substring(47).slice(0, -2));
+        json.table.rows.forEach(row => {
+          const type = row.c[2]?.v;
+          const lat = row.c[4]?.v;
+          const lng = row.c[5]?.v;
+          if (!type || !lat || !lng) return;
 
-            let icon;
-            if (type === "Live") {
-              icon = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
-            } else if (type === "Work/School") {
-              icon = "https://maps.google.com/mapfiles/ms/icons/green-dot.png";
-            } else if (type === "Play") {
-              icon = "https://maps.google.com/mapfiles/ms/icons/orange-dot.png";
-            }
+          let icon;
+          if (type === "Live") icon = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+          if (type === "Work/School") icon = "https://maps.google.com/mapfiles/ms/icons/green-dot.png";
+          if (type === "Play") icon = "https://maps.google.com/mapfiles/ms/icons/orange-dot.png";
 
-            new google.maps.Marker({
-              position: { lat, lng },
-              map,
-              icon
-            });
+          new google.maps.Marker({
+            position: { lat, lng },
+            map,
+            icon
           });
         });
-    }
-  </script>
+      });
+  }
+</script>
 
-  <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC86YnNhyUyQtgOJX7PC0uQ5SUQGdUv7qs"
-    async
-    defer>
-  </script>
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC86YnNhyUyQtgOJX7PC0uQ5SUQGdUv7qs&callback=initMap"
+  async
+  defer>
+</script>
+
 </body>
 </html>
