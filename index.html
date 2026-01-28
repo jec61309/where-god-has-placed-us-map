@@ -1,162 +1,144 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Where God Has Placed Us</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <style>
     html, body {
       height: 100%;
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
     }
+
     #map {
       height: 100%;
       width: 100%;
     }
+
+    #map-legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.4;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 99999;
+    }
+
+    #map-legend div {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    #map-legend div:last-child {
+      margin-bottom: 0;
+    }
+
+    #map-legend img {
+      width: 18px;
+      height: 18px;
+      margin-right: 8px;
+    }
+
+    #map-legend .star {
+      font-size: 16px;
+    }
   </style>
 </head>
+
 <body>
+  <div id="map"></div>
 
-<div id="map"></div>
+  <div id="map-legend">
+    <div><img src="https://maps.google.com/mapfiles/ms/icons/blue-dot.png"> Live</div>
+    <div><img src="https://maps.google.com/mapfiles/ms/icons/green-dot.png"> Work / School</div>
+    <div><img src="https://maps.google.com/mapfiles/ms/icons/orange-dot.png"> Play</div>
+    <div class="star">⭐ GNC Sunday Gathering</div>
+  </div>
 
-<script>
-/* =========================
-   CONFIG
-========================= */
-const SHEET_ID   = "1JnsbsIui3DZrxczAANMYyp3qun05kR-98ZmHZIC-ECE";
-const API_KEY    = "AIzaSyC86YnNhyUyQtgOJX7PC0uQ5SUQGdUv7qs";
-const SHEET_NAME = "Form Responses 1";
+  <script>
+    const SHEET_ID = "1JnsbsIui3DZrxczAANMYyp3qun05kR-98ZmHZIC-ECE";
+    const SHEET_NAME = "Form Responses 1";
 
-const SHEET_URL =
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+    const CHURCH_LOCATION = {
+      lat: 42.0511,
+      lng: -82.58783
+    };
 
-let map;
-let geocoder;
-let markers = [];
-let geocodeCache = new Map();
+    let map;
 
-/* =========================
-   MAP INIT
-========================= */
-function initMap() {
-  map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 42.06, lng: -82.63 },
-    zoom: 12
-  });
-
-  geocoder = new google.maps.Geocoder();
-
-  /* ⭐ CHURCH / SCHOOL STAR MARKER (SVG, bulletproof) */
-  const starSvg =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
-    '<polygon points="32,4 39,24 60,24 43,36 49,56 32,44 15,56 21,36 4,24 25,24" ' +
-    'fill="#FFD700" stroke="#5D4037" stroke-width="3"/></svg>';
-
-  const churchIcon = {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(starSvg),
-    scaledSize: new google.maps.Size(44, 44),
-    anchor: new google.maps.Point(22, 22)
-  };
-
-  new google.maps.Marker({
-    map: map,
-    position: { lat: 42.0511, lng: -82.58783 },
-    title: "Good News Church – Sunday Gathering",
-    icon: churchIcon,
-    zIndex: 10000
-  });
-
-  loadData();
-}
-
-/* =========================
-   HELPERS
-========================= */
-function clearMarkers() {
-  markers.forEach(m => m.setMap(null));
-  markers = [];
-}
-
-function pinColor(category) {
-  if (category === "Work/School") return "green";
-  if (category === "Play") return "orange";
-  return "blue";
-}
-
-function addMarker(lat, lng, category) {
-  const marker = new google.maps.Marker({
-    map,
-    position: { lat, lng },
-    title: category,
-    icon: `https://maps.google.com/mapfiles/ms/icons/${pinColor(category)}-dot.png`
-  });
-  markers.push(marker);
-}
-
-function geocodeAndAdd(address, category) {
-  const addr = (address || "").trim();
-  if (!addr) return;
-
-  if (geocodeCache.has(addr)) {
-    const cached = geocodeCache.get(addr);
-    addMarker(cached.lat, cached.lng, category);
-    return;
-  }
-
-  geocoder.geocode({ address: addr }, (results, status) => {
-    if (status === "OK" && results[0]) {
-      const loc = results[0].geometry.location;
-      const lat = loc.lat();
-      const lng = loc.lng();
-      geocodeCache.set(addr, { lat, lng });
-      addMarker(lat, lng, category);
-    } else {
-      console.warn("Geocode failed:", addr, status);
-    }
-  });
-}
-
-/* =========================
-   LOAD DATA
-========================= */
-function loadData() {
-  const url = SHEET_URL + "&_=" + Date.now();
-
-  fetch(url)
-    .then(res => res.text())
-    .then(text => {
-      let json;
-      try {
-        json = JSON.parse(text.substring(47).slice(0, -2));
-      } catch (e) {
-        console.error("Sheet parse error", e);
-        return;
-      }
-
-      const rows = json.table?.rows || [];
-      clearMarkers();
-
-      rows.forEach(row => {
-        const c = row.c || [];
-        const live = c[1]?.v || "";
-        const work = c[2]?.v || "";
-        const play = c[3]?.v || "";
-
-        if (live) geocodeAndAdd(live, "Live");
-        if (work) geocodeAndAdd(work, "Work/School");
-        if (play) geocodeAndAdd(play, "Play");
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: CHURCH_LOCATION,
+        zoom: 12,
+        mapTypeControl: false
       });
-    })
-    .catch(err => console.error("Fetch error:", err));
-}
 
-/* Auto refresh every 2 minutes */
-setInterval(loadData, 120000);
-</script>
+      // ⭐ GNC Sunday Gathering marker
+      new google.maps.Marker({
+        position: CHURCH_LOCATION,
+        map,
+        title: "GNC Sunday Gathering",
+        icon: {
+          path: google.maps.SymbolPath.STAR,
+          scale: 10,
+          fillColor: "#FFD700",
+          fillOpacity: 1,
+          strokeColor: "#333",
+          strokeWeight: 1
+        }
+      });
 
-<script async
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC86YnNhyUyQtgOJX7PC0uQ5SUQGdUv7qs&callback=initMap">
-</script>
+      loadSheetData();
+    }
 
+    function loadSheetData() {
+      const url =
+        `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+      fetch(url)
+        .then(res => res.text())
+        .then(text => {
+          const json = JSON.parse(text.substr(47).slice(0, -2));
+          const rows = json.table.rows;
+
+          rows.forEach(row => {
+            const type = row.c[2]?.v;
+            const lat = row.c[4]?.v;
+            const lng = row.c[5]?.v;
+
+            if (!type || !lat || !lng) return;
+
+            let icon;
+            if (type === "Live") {
+              icon = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+            } else if (type === "Work/School") {
+              icon = "https://maps.google.com/mapfiles/ms/icons/green-dot.png";
+            } else if (type === "Play") {
+              icon = "https://maps.google.com/mapfiles/ms/icons/orange-dot.png";
+            }
+
+            new google.maps.Marker({
+              position: { lat, lng },
+              map,
+              icon
+            });
+          });
+        });
+    }
+  </script>
+
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC86YnNhyUyQtgOJX7PC0uQ5SUQGdUv7qs"
+    async
+    defer>
+  </script>
 </body>
 </html>
